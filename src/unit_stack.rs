@@ -1,30 +1,35 @@
-use super::unit::Unit;
+use crate::unit_type::{UnitType, UnitTypes};
 
 pub struct UnitStack {
-    unit: Unit,
-    //quantity: u8,
-    data: Data,
+    pub(crate) unit_type: UnitType,
+    pub(crate) moves_remaining: u8,
+    pub(crate) hits_remaining: u8,
+    pub(crate) quantity_index_after_move_index: usize,
+    pub(crate) quantity_index_after_hit_index: usize,
+    pub(crate) quantity_index_after_turn_index: usize,
 }
 
-#[derive(Default, Debug, PartialEq)]
-pub struct Data {
-    quantity: u8
-}
+pub fn create_unit_stacks(unit_types: &UnitTypes) -> (Vec<UnitStack>, Vec<UnitStack>) {
+    let unmoved_unit_stacks = vec![
+        UnitStack {
+            unit_type: unit_types.artillery,
+            moves_remaining: 1,
+            hits_remaining: 1,
+            quantity_index_after_move_index: 0,
+            quantity_index_after_hit_index: 0,
+            quantity_index_after_turn_index: 0,
+        }
+    ];
+    let moved_unit_stacks: Vec<UnitStack> = vec![
+        UnitStack {
+            unit_type: unit_types.artillery,
+            moves_remaining: 0,
+            hits_remaining: 1,
+            quantity_index_after_move_index: 0,
+            quantity_index_after_hit_index: 0,
+            quantity_index_after_turn_index: 0,
+        }
+    ];
 
-#[derive(Default, Debug, PartialEq)]
-pub struct UnitStacks {
-    //infantry: crate::unit_stack::Data,
-    artillery: crate::unit_stack::Data,
-    /*
-    armour: crate::unit_stack::Data,
-    fighter: crate::unit_stack::Data,
-    bomber: crate::unit_stack::Data,
-    aa_gun: crate::unit_stack::Data,
-    transport: crate::unit_stack::Data,
-    submarine: crate::unit_stack::Data,
-    destroyer: crate::unit_stack::Data,
-    crusier: crate::unit_stack::Data,
-    carrier: crate::unit_stack::Data,
-    battleship: crate::unit_stack::Data,
-    */
+    (unmoved_unit_stacks, moved_unit_stacks)
 }

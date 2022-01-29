@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::connection::Connection;
 use crate::engine::GameData;
 use crate::player::Player;
@@ -18,18 +20,24 @@ pub(crate) struct Territory {
     index: usize,
 }
 
+impl fmt::Display for Territory {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name)
+    }
+}
+
 #[derive(Default, Debug, PartialEq)]
 pub struct Data {
-    owner_id: u8,
+    pub owner_id: usize,
     is_owned: bool,
     is_ally_owned: bool,
     factory_max: u8,
     factory_health: u8,
     construction_remaining: u8,
     recently_conquered: bool,
-    my_unit_stacks: crate::unit_stack::UnitStacks,
-    enemy_unit_stacks: [crate::unit_stack::UnitStacks; 3],
-    ally_unit_stacks: [crate::unit_stack::UnitStacks; 2],
+    my_moved_unit_stacks: [u16; 1], // 1 unit status type
+    alternating_team_unit_stacks: [[u16; 2]; 1], // 2 total players, 1 unit status type
+    //current_player, enemy1, ally1, enemy2, ect...
 }
 
 impl Territory {
@@ -56,28 +64,19 @@ impl Territory {
         game_data.territories[self.index].construction_remaining = self.land_value;
     }
 
-    pub(crate) fn set_owner(&self, owner_id: u8, current_player: &Player, game_data: &mut GameData) {
+    pub(crate) fn set_owner(&self, owner_id: usize, current_player: &Player, game_data: &mut GameData) {
         game_data.territories[self.index].owner_id = owner_id;
         self.update_ownership_flags(current_player, game_data)
     }
 
-    fn update_ownership_flags(&self, current_player: &Player, game_data: &mut GameData) { 
-        let territory_data: Data = game_data.territories[self.index];
-        let current_owner_id:u8 = territory_data.owner_id;
-        if current_owner_id == current_player.index {
-            territory_data.is_owned = true;
-            territory_data.is_enemy_owned = false;
-            territory_data.is_ally_owned = true;
-        } else {
-            territory_data.is_owned = false;
-            let ally_owned: bool = current_player.ally_indicies.contains(&current_owner_id);            
-            territory_data.is_enemy_owned = !ally_owned;
-            territory_data.is_ally_owned = ally_owned;
-        }
+    fn update_ownership_flags(&self, current_player: &Player, game_data: &mut GameData) {        
+        let territory_data: &mut Data = &mut game_data.territories[self.index];
+        let current_owner_id:usize = territory_data.owner_id;
+        territory_data.is_owned = current_owner_id == current_player.index;
+        territory_data.is_ally_owned = current_player.ally_indicies.contains(&current_owner_id);
     }
 
 }
-
 pub(crate) fn create_territories() -> Vec<Territory> {
     let mut territories: Vec<Territory> = Vec::new();
     add_territory(&mut territories, "Russia", 8, 0);
