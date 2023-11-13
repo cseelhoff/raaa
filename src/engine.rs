@@ -7,6 +7,7 @@ use std::fmt::Write;
 use std::fs::File;
 use std::io::BufReader;
 use serde_json::from_reader;
+use std::collections::HashMap;
 
 const PLAYER_COUNT: usize = 2;
 const TERRITORY_COUNT: usize = 2;
@@ -23,9 +24,12 @@ pub(crate) fn initialize() {
     //load objects from json file "unittypes.json"    
     let unit_types: Vec<UnitType> = load_unit_types();
     let (unmoved_unit_stacks, moved_unit_stacks) = create_unit_statuses(&unit_types);  
-        
-    let mut players: Vec<Player> = load_players();
-    let mut territories: Vec<Territory> = load_territories();
+    
+    let mut player_lookup: HashMap<&str, Player> = HashMap::new();
+    let mut players: Vec<Player> = load_players(player_lookup);
+
+    let mut territory_lookup: HashMap<&str, Territory> = HashMap::new();
+    let mut territories: Vec<Territory> = load_territories(territory_lookup, player_lookup);
     let mut connections: Vec<Connection> = load_connections();
 
     territories[0].build_factory();
@@ -40,8 +44,8 @@ pub(crate) fn initialize() {
     let mut current_turn: usize = 0;
     let mut current_player: &Player = &players[current_turn];
 
-    territories[0].set_owner(0, current_player, &mut game_data);
-    territories[1].set_owner(1, current_player, &mut game_data);
+    territories[0].set_owner(0, current_player);
+    territories[1].set_owner(1, current_player);
     
     let mut turn_count: u16 = 0;
     while is_game_over() == false && turn_count < 10 {
@@ -80,17 +84,24 @@ fn load_unit_types() -> Vec<UnitType> {
     return unit_types
 }
 
-fn load_players() -> Vec<Player> {
+fn load_players(player_lookup: HashMap<&str, Player>) -> Vec<Player> {
     let file = File::open("players.json").expect("Could not open file");
     let reader = BufReader::new(file);
     let players: Vec<Player> = from_reader(reader).expect("Could not deserialize JSON");
+    for player in &players {
+        player_lookup.insert(player.name, player);
+    }
     return players
 }
 
-fn load_territories() -> Vec<Territory> {
+fn load_territories(territory_lookup: HashMap<&str, Territory>, player_lookup: HashMap<&str, Player>) -> Vec<Territory> {
     let file = File::open("territories.json").expect("Could not open file");
     let reader = BufReader::new(file);
     let territories: Vec<Territory> = from_reader(reader).expect("Could not deserialize JSON");
+    for territory in &territories {
+        territory.owner_player = player_lookup.get(territory.owner);
+        territory_lookup.insert(territory.name, territory);
+    }
     return territories
 }
 
