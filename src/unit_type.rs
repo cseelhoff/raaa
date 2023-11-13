@@ -1,6 +1,6 @@
-use crate::player::Player;
+use serde::Deserialize;
 
-#[derive(Default, Debug, PartialEq, Clone, Copy)]
+#[derive(Default, Debug, PartialEq, Clone, Copy, Deserialize)]
 pub struct UnitType {
     pub name: &'static str,
     pub attack: u8,
@@ -20,24 +20,4 @@ pub struct UnitType {
     pub is_anti_sub: bool,
     pub bombard: u8,
     pub aa_shots: u8,
-}
-pub struct UnitTypes {
-    pub artillery: UnitType,
-}
-
-pub fn create_unit_types() -> UnitTypes {
-    let unit_types: UnitTypes = UnitTypes {
-        artillery: UnitType {
-            name: "Artillery", 
-            attack: 2, 
-            defense: 2, 
-            max_moves: 1, 
-            max_hits: 1, 
-            cost: 4, 
-            max_supported: 1, 
-            weight: 3, 
-            ..Default::default()
-        }
-    };
-    unit_types
 }

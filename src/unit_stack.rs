@@ -1,35 +1,14 @@
-use crate::unit_type::{UnitType, UnitTypes};
+use crate::unit_status::UnitStatus;
 
 pub struct UnitStack {
-    pub(crate) unit_type: UnitType,
-    pub(crate) moves_remaining: u8,
-    pub(crate) hits_remaining: u8,
-    pub(crate) quantity_index_after_move_index: usize,
-    pub(crate) quantity_index_after_hit_index: usize,
-    pub(crate) quantity_index_after_turn_index: usize,
+    pub(crate) unit_status: UnitStatus,
+    pub(crate) owner: Player,
+    pub(crate) unit_quantity: u8,
+    pub(crate) unitStatusAfterMove: UnitStack, // this unit status changes to this after it moves (decrement one status quantity, increase another)
+    pub(crate) unitStatusAfterHit: UnitStack,
+    pub(crate) unitStatusAfterTurn: UnitStack,
 }
 
-pub fn create_unit_stacks(unit_types: &UnitTypes) -> (Vec<UnitStack>, Vec<UnitStack>) {
-    let unmoved_unit_stacks = vec![
-        UnitStack {
-            unit_type: unit_types.artillery,
-            moves_remaining: 1,
-            hits_remaining: 1,
-            quantity_index_after_move_index: 0,
-            quantity_index_after_hit_index: 0,
-            quantity_index_after_turn_index: 0,
-        }
-    ];
-    let moved_unit_stacks: Vec<UnitStack> = vec![
-        UnitStack {
-            unit_type: unit_types.artillery,
-            moves_remaining: 0,
-            hits_remaining: 1,
-            quantity_index_after_move_index: 0,
-            quantity_index_after_hit_index: 0,
-            quantity_index_after_turn_index: 0,
-        }
-    ];
+pub fn create_unit_stacks(unmoved_unit_statuses: Vec<UnitStatus>, moved_unit_statuses: Vec<UnitStatus>) -> (Vec<UnitStack>, Vec<UnitStack>) {
 
-    (unmoved_unit_stacks, moved_unit_stacks)
 }

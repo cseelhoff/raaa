@@ -1,32 +1,41 @@
-use crate::unit_stack::{UnitStack, create_unit_stacks};
-use crate::unit_type::{UnitTypes, self};
-use crate::{unit_type::UnitType, player::Player, unit_type::create_unit_types, player::create_players};
-use crate::connection::create_connections;
-use crate::territory::{Territory, create_territories};
+use crate::unit_status::create_unit_statuses;
+use crate::unit_type::UnitType;
+use crate::player::Player;
+use crate::connection::Connection;
+use crate::territory::Territory;
 use std::fmt::Write;
+use std::fs::File;
+use std::io::BufReader;
+use serde_json::from_reader;
 
 const PLAYER_COUNT: usize = 2;
 const TERRITORY_COUNT: usize = 2;
 
-#[derive(Default, Debug, PartialEq)]
-pub(crate) struct GameData {
-    pub(crate) players: [u8; PLAYER_COUNT],
-    pub(crate) territories: [crate::territory::Data; TERRITORY_COUNT]
-}
+//#[derive(Default, Debug, PartialEq)]
+//pub(crate) struct GameData {
+//    pub(crate) players_money: [u8; PLAYER_COUNT],
+//    pub(crate) territories: [crate::territory::Data; TERRITORY_COUNT]
+//}
 pub(crate) fn initialize() {
 
-    let mut game_data: GameData = GameData {..Default::default() };
-    let unit_types: UnitTypes = create_unit_types();
-    let (unmoved_unit_stacks, moved_unit_stacks) = 
-        create_unit_stacks(&unit_types);  
+    //let mut game_data: GameData = GameData {..Default::default() };
+
+    //load objects from json file "unittypes.json"    
+    let unit_types: Vec<UnitType> = load_unit_types();
+    let (unmoved_unit_stacks, moved_unit_stacks) = create_unit_statuses(&unit_types);  
         
-    let players: Vec<Player> = create_players();
-    let mut territories: Vec<Territory> = create_territories();
-    create_connections(&mut territories);
-    players[0].set_money(&mut game_data, 10);
-    players[1].set_money(&mut game_data, 10);
-    territories[0].build_factory(&mut game_data);
-    territories[1].build_factory(&mut game_data);
+    let mut players: Vec<Player> = load_players();
+    let mut territories: Vec<Territory> = load_territories();
+    let mut connections: Vec<Connection> = load_connections();
+
+    territories[0].build_factory();
+    territories[1].build_factory();
+
+    territories[0].reset_factory();
+    territories[1].reset_factory();
+
+    players[0].money = 10;
+    players[1].money = 10;
 
     let mut current_turn: usize = 0;
     let mut current_player: &Player = &players[current_turn];
@@ -34,11 +43,11 @@ pub(crate) fn initialize() {
     territories[0].set_owner(0, current_player, &mut game_data);
     territories[1].set_owner(1, current_player, &mut game_data);
     
-    let mut turn_count = 0;
-    while is_game_over(&players, &game_data) == false && turn_count < 10 {
+    let mut turn_count: u16 = 0;
+    while is_game_over() == false && turn_count < 10 {
         current_player = &players[current_turn];
         if current_player.is_human {
-            print_game_status(&players, &territories, &current_player, &game_data);
+            print_game_status(&players, &territories, &current_player);
         }
         move_land_units();
         move_transport_units();
@@ -64,19 +73,83 @@ pub(crate) fn initialize() {
     println!("game over");
 }
 
-
-fn is_game_over(players: &Vec<Player>, game_data: &GameData) -> bool {
-    let mut player_index = 0;
-    while player_index < PLAYER_COUNT {
-        if players[player_index].owns_captial(&game_data) == false {
-            return true;
-        }
-        player_index = player_index + 1
-    }
-    false
+fn load_unit_types() -> Vec<UnitType> {
+    let file = File::open("unit_types.json").expect("Could not open file");
+    let reader = BufReader::new(file);
+    let unit_types: Vec<UnitType> = from_reader(reader).expect("Could not deserialize JSON");
+    return unit_types
 }
 
-fn print_game_status(players: &[Player], territories: &[Territory], current_player: &Player, game_data: &GameData) {
+fn load_players() -> Vec<Player> {
+    let file = File::open("players.json").expect("Could not open file");
+    let reader = BufReader::new(file);
+    let players: Vec<Player> = from_reader(reader).expect("Could not deserialize JSON");
+    return players
+}
+
+fn load_territories() -> Vec<Territory> {
+    let file = File::open("territories.json").expect("Could not open file");
+    let reader = BufReader::new(file);
+    let territories: Vec<Territory> = from_reader(reader).expect("Could not deserialize JSON");
+    return territories
+}
+
+fn load_connections() -> Vec<Connection> {
+    let file = File::open("connections.json").expect("Could not open file");
+    let reader = BufReader::new(file);
+    let connections: Vec<Connection> = from_reader(reader).expect("Could not deserialize JSON");
+    return connections
+}
+
+pub fn create_players() -> Vec<Player> {
+    let mut players: Vec<Player> = Vec::new();
+    players.push(Player::new_human(
+        "Russia",
+        1,
+        0,
+        players.len() as usize
+    ));
+    players.push(Player::new(
+        "Germany",
+        2,
+        1,
+        players.len() as usize
+    ));
+    players[0].allies.push(false);
+    players[1].allies.push(false);
+    return players
+}
+
+fn create_territories() -> Vec<Territory> {
+    let mut territories: Vec<Territory> = Vec::new();
+    territories.push(Territory::new(
+        "Russia",
+        8,
+        get_player_index(players, "Russia"),
+        territories.len(),
+    ));
+    territories.push(Territory::new(
+        "Germany",
+        8,
+        get_player_index(players, "Germany"),
+        territories.len(),
+    ));
+    territories
+}
+
+fn get_player_index(players: _, arg: &str) -> usize {
+    players.iter().position(|player| player.name == arg).unwrap()
+}
+
+fn is_game_over() -> bool {
+    (0..PLAYER_COUNT).any(|player_index| !player_owns_capital(player_index))
+}
+
+fn player_owns_capital(player_index: u8) -> bool {
+    return territories[players[player_index].capital_index].owner_id == player_index
+}
+
+fn print_game_status(players: &[Player], territories: &[Territory], current_player: &Player) {
     let mut status: String = "CurrentTurn: ".to_owned();
     status.push_str(current_player.name);
     println!("{}", status);
