@@ -1,4 +1,5 @@
-use crate::unit_status::UnitStatus;
+/*
+use crate::{unit_status::UnitStatus, player::Player};
 
 pub struct UnitStack {
     pub(crate) unit_status: UnitStatus,
@@ -30,34 +31,4 @@ pub fn create_unit_stacks(players:Vec<Player>, unmoved_unit_statuses: Vec<UnitSt
     }
     return (unmoved_unit_stacks, moved_unit_stacks)
 }
-
-pub fn create_unit_stacks_for_player(player:Player, unmoved_unit_statuses: Vec<UnitStatus>, moved_unit_statuses: Vec<UnitStatus>) -> (Vec<UnitStack>, Vec<UnitStack>) {
-    let mut unmoved_unit_stacks: Vec<UnitStack> = Vec::new();
-    for unmoved_unit_status in &unmoved_unit_statuses {
-        unmoved_unit_stacks.push(UnitStack::new(
-            unmoved_unit_status,
-            player,
-            0,
-            None,
-            None,
-            None
-        ));
-    }
-    let mut moved_unit_stacks: Vec<UnitStack> = Vec::new();
-    for moved_unit_status in &moved_unit_statuses {
-        moved_unit_stacks.push(UnitStack::new(
-            moved_unit_status,
-            player,
-            0,
-            None,
-            None,
-            None
-        ));
-    }
-    for unmoved_unit_stack in unmoved_unit_stacks:
-        for moved_unit_stack in moved_unit_stacks:
-            if unmoved_unit_stack.unit_status == moved_unit_stack.unit_status and  {
-                unmoved_unit_stack.unitStatusAfterMove = moved_unit_stack;
-                moved_unit_stack.unitStatusAfterMove = unmoved_unit_stack;
-            }
-}
+*/

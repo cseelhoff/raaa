@@ -1,9 +1,13 @@
-use crate::unit_status::create_unit_statuses;
 use crate::unit_type::UnitType;
 use crate::player::Player;
 use crate::connection::Connection;
 use crate::territory::Territory;
-use std::fmt::Write;
+use crate::unit_health::UnitHealth;
+use crate::unit_health::create_unit_healths;
+use crate::unit_status::UnitStatus;
+use crate::unit_status::create_unit_statuses;
+use crate::inactive_unit_stack::InactiveUnitStack;
+
 use std::fs::File;
 use std::io::BufReader;
 use serde_json::from_reader;
@@ -11,6 +15,7 @@ use std::collections::HashMap;
 
 const PLAYER_COUNT: usize = 2;
 const TERRITORY_COUNT: usize = 2;
+const UNIT_HEALTH_COUNT: usize = 2;
 
 //#[derive(Default, Debug, PartialEq)]
 //pub(crate) struct GameData {
@@ -23,32 +28,29 @@ pub(crate) fn initialize() {
 
     //load objects from json file "unittypes.json"    
     let unit_types: Vec<UnitType> = load_unit_types();
-    let (unmoved_unit_stacks, moved_unit_stacks) = create_unit_statuses(&unit_types);  
+    let unit_healths: Vec<UnitHealth> = create_unit_healths(&unit_types);
+    let moved_unit_statuses: Vec<UnitStatus> = create_unit_statuses(&unit_types);  
     
-    let mut player_lookup: HashMap<&str, Player> = HashMap::new();
-    let mut players: Vec<Player> = load_players(player_lookup);
+    let mut player_lookup: HashMap<&str, &Player> = HashMap::new();
+    let players: Vec<Player> = load_players(&mut player_lookup);
+    
+    let mut territory_lookup: HashMap<&str, &Territory> = HashMap::new();
+    let territories: Vec<Territory> = load_territories(&mut territory_lookup, player_lookup);
 
-    let mut territory_lookup: HashMap<&str, Territory> = HashMap::new();
-    let mut territories: Vec<Territory> = load_territories(territory_lookup, player_lookup);
-    let mut connections: Vec<Connection> = load_connections();
+    let graveyard = InactiveUnitStack::new(
+        None,
+        0
+    );
 
-    territories[0].build_factory();
-    territories[1].build_factory();
+    create_inactive_armies(&territories, players, unit_healths, graveyard);
 
-    territories[0].reset_factory();
-    territories[1].reset_factory();
-
-    players[0].money = 10;
-    players[1].money = 10;
+    let mut connections: Vec<Connection> = load_connections(territory_lookup);
 
     let mut current_turn: usize = 0;
     let mut current_player: &Player = &players[current_turn];
-
-    territories[0].set_owner(0, current_player);
-    territories[1].set_owner(1, current_player);
     
     let mut turn_count: u16 = 0;
-    while is_game_over() == false && turn_count < 10 {
+    while is_game_over(territories, players) == false && turn_count < 10 {
         current_player = &players[current_turn];
         if current_player.is_human {
             print_game_status(&players, &territories, &current_player);
@@ -84,80 +86,62 @@ fn load_unit_types() -> Vec<UnitType> {
     return unit_types
 }
 
-fn load_players(player_lookup: HashMap<&str, Player>) -> Vec<Player> {
+fn load_players(player_lookup: &mut HashMap<&str, &Player>) -> Vec<Player> {
     let file = File::open("players.json").expect("Could not open file");
     let reader = BufReader::new(file);
     let players: Vec<Player> = from_reader(reader).expect("Could not deserialize JSON");
     for player in &players {
         player_lookup.insert(player.name, player);
     }
-    return players
+    players
 }
 
-fn load_territories(territory_lookup: HashMap<&str, Territory>, player_lookup: HashMap<&str, Player>) -> Vec<Territory> {
+fn load_territories(territory_lookup: &mut HashMap<&str, &Territory>, player_lookup: HashMap<&str, &Player>) -> Vec<Territory> {
     let file = File::open("territories.json").expect("Could not open file");
     let reader = BufReader::new(file);
     let territories: Vec<Territory> = from_reader(reader).expect("Could not deserialize JSON");
     for territory in &territories {
-        territory.owner_player = player_lookup.get(territory.owner);
+        territory.owner_id = player_lookup.get(&territory.owner).unwrap().index;
         territory_lookup.insert(territory.name, territory);
+    }
+    for player in player_lookup.values() {
+        player.capital_index = territory_lookup.get(player.capital).unwrap().index;
     }
     return territories
 }
 
-fn load_connections() -> Vec<Connection> {
+fn load_connections(territory_lookup: HashMap<&str, &Territory>) -> Vec<Connection> {
     let file = File::open("connections.json").expect("Could not open file");
     let reader = BufReader::new(file);
     let connections: Vec<Connection> = from_reader(reader).expect("Could not deserialize JSON");
     return connections
 }
 
-pub fn create_players() -> Vec<Player> {
-    let mut players: Vec<Player> = Vec::new();
-    players.push(Player::new_human(
-        "Russia",
-        1,
-        0,
-        players.len() as usize
-    ));
-    players.push(Player::new(
-        "Germany",
-        2,
-        1,
-        players.len() as usize
-    ));
-    players[0].allies.push(false);
-    players[1].allies.push(false);
-    return players
+fn create_inactive_armies(territories: &[Territory], players: Vec<Player>, unit_healths: Vec<UnitHealth>, graveyard: InactiveUnitStack) {
+    for territory in territories {
+        for player in players {
+            let mut inactive_armies_for_player: [[InactiveUnitStack; UNIT_HEALTH_COUNT]; PLAYER_COUNT] = [[InactiveUnitStack::default(); UNIT_HEALTH_COUNT]; PLAYER_COUNT];
+            let mut last_inactive_army_for_player = graveyard;
+            let unit_health_index: u8 = 0;
+            for (unit_health_index, unit_health) in unit_healths.iter().enumerate() {
+                let mut inactive_army_for_player = InactiveUnitStack::new(
+                    unit_health.unit_type,
+                    unit_health.hits_remaining,
+                    graveyard
+                );
+                if unit_health.hits_remaining > 1 {
+                    inactive_army_for_player.unitStatusAfterHit = last_inactive_army_for_player;
+                }
+                inactive_armies_for_player[player.index][unit_health_index] = inactive_army_for_player;
+                last_inactive_army_for_player = Some(Box::new(inactive_army_for_player));
+            }      
+        }
+    }
 }
 
-fn create_territories() -> Vec<Territory> {
-    let mut territories: Vec<Territory> = Vec::new();
-    territories.push(Territory::new(
-        "Russia",
-        8,
-        get_player_index(players, "Russia"),
-        territories.len(),
-    ));
-    territories.push(Territory::new(
-        "Germany",
-        8,
-        get_player_index(players, "Germany"),
-        territories.len(),
-    ));
-    territories
-}
 
-fn get_player_index(players: _, arg: &str) -> usize {
-    players.iter().position(|player| player.name == arg).unwrap()
-}
-
-fn is_game_over() -> bool {
-    (0..PLAYER_COUNT).any(|player_index| !player_owns_capital(player_index))
-}
-
-fn player_owns_capital(player_index: u8) -> bool {
-    return territories[players[player_index].capital_index].owner_id == player_index
+fn is_game_over(territories: Vec<Territory>, players: Vec<Player>) -> bool {
+    players.iter().any(|player| territories[player.capital_index].owner_id != player.index)
 }
 
 fn print_game_status(players: &[Player], territories: &[Territory], current_player: &Player) {

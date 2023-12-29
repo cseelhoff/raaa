@@ -1,10 +1,13 @@
 use std::fmt;
+use serde::Deserialize;
 
 use crate::connection::Connection;
+use crate::player::Player;
 use crate::inactive_unit_stack::InactiveUnitStack;
-use:crate::player::Player;
+use crate::unit_health::UnitHealth;
+use crate::unit_status::UnitStatus;
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize)]
 pub(crate) struct Territory {
     pub name: &'static str,
     pub land_value: u8,
@@ -17,18 +20,18 @@ pub(crate) struct Territory {
     adjacent_land_territories: Vec<Territory>,
     adjacent_air_territories: Vec<Territory>,
     buildable_territories: Vec<Territory>,
-    index: usize,
-    pub owner: str,
+    pub index: usize,
+    pub owner: &'static str,
     //observables:
-    pub owner_player: Player,
+    pub owner_id: u8,
     is_owned: bool,
     is_ally_owned: bool,
     pub factory_max: u8,
     factory_health: u8,
     pub construction_remaining: u8,
     recently_conquered: bool,
-    my_unit_stacks: [u16; 1], // 1 unit status type - this includes units that are other than full move points remaining
-    inactive_armies: [[u16; 1]; 2]   // 2 total players, 1 unit status type - this includes only unit types with full move points remaining
+    my_unit_stacks: [u8; 1], // 1 unit status type - this includes units that are other than full move points remaining
+    inactive_armies: [[InactiveUnitStack; 1]; 2]   // 2 total players, 1 unit status type - this includes only unit types with full move points remaining
     //current_player, enemy1, ally1, enemy2, ect...
 }
 
@@ -54,7 +57,7 @@ impl Territory {
             buildable_territories: Vec::new(),
             index,
             owner: "",
-            owner_player: None,
+            owner_id: 0,
             is_owned: false,
             is_ally_owned: false,
             factory_max: 0,
@@ -62,38 +65,13 @@ impl Territory {
             construction_remaining: 0,
             recently_conquered: false,
             my_unit_stacks: [1], // 1 unit status type
-            inactive_armies: [1; 2], // 2 total players, 1 unit status type
+            inactive_armies: [[InactiveUnitStack{ unit_health: None, quantity: 0, stack_after_hit: None }; 1]; 2]   // 2 total players, 1 unit status type
         }
     }
 
-    pub fn create_inactive_armies(&self, players: Vec<Player>, unit_healths: Vec<UnitHealth>, graveyard: InactiveUnitStack) {
-        //let graveyard = InactiveUnitStack::new(
-//            None,
-            //0,
-            //None
-        //);
-    
-        for player in players {
-            let inactive_armies_for_player:Vec<InactiveUnitStack> = Vec::new();
-            let last_inactive_army_for_player = graveyard;
-            for unit_health in unit_healths {
-                let inactive_army_for_player = InactiveUnitStack::new(
-                    unit_health.unit_type,
-                    unit_health.hits_remaining,
-                    graveyard
-                );
-                if unit_health.hits_remaining > 1 {
-                    inactive_army_for_player.unitStatusAfterHit = last_inactive_army_for_player;
-                }
-                inactive_armies_for_player.push(inactive_army_for_player);
-                last_inactive_army_for_player = inactive_army_for_player;
-            }
-            self.inactive_armies.push(inactive_armies_for_player);
-        }
-    }
 
     pub fn create_my_unit_stacks(&self, players: Vec<Player>, unit_statuses: Vec<UnitStatus>, graveyard: InactiveUnitStack) {
-        //let graveyard = InactiveUnitStack::new(
+        
     }
 
     pub(crate) fn build_factory(&self) {

@@ -1,8 +1,6 @@
 use serde::Deserialize;
 
-use crate::territory::Territory;
-
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, Deserialize)]
 pub struct Player {
     //moneyIndex: u16,
     //reserved_money_index: u16,
@@ -10,11 +8,11 @@ pub struct Player {
     pub team: u8,
     pub is_human: bool,
     pub capital: &'static str,
-    pub capital_territory: Territory,
+    pub capital_index: usize,
     pub allies: Vec<bool>,
     //pub unit_stack_indicies: Vec<u16>,
 
-    pub index: usize,
+    pub index: u8,
     //data: Data,
 
     //observables
@@ -23,12 +21,12 @@ pub struct Player {
 }
 
 impl Player {
-    pub fn new(name: &'static str, team: u8, capital_index: usize, index: usize) -> Self {
+    pub fn new(name: &'static str, team: u8, index: u8) -> Self {
         Self {
             name,
             team,
             capital: "",
-            capital_territory: None,
+            capital_index: 0,
             is_human: false,
             allies: Vec::new(),
             //unit_stack_indicies: Vec::new(),
@@ -37,20 +35,4 @@ impl Player {
             reserved_money: 0
         }
     }
-
-    pub fn new_human(name: &'static str, team: u8, capital_index: usize, index: usize) -> Self {
-        Self {
-            name,
-            team,
-            capital: "",
-            capital_territory: None,
-            is_human: true,
-            allies: Vec::new(),
-            //unit_stack_indicies: Vec::new(),
-            index,
-            money: 0,
-            reserved_money: 0
-        }
-    }
-
 }
